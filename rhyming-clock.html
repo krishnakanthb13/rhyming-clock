@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rhyming Clock</title>
+<link rel="icon" type="image/png" href="favicon_io/favicon-32x32.png">
+<style>
+    /* Import a retro terminal font from Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+    /* Reset default browser styles */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    /* Main body layout: centered, black background, no scrollbars */
+    body {
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #000;
+        font-family: 'Consolas', 'Lucida Console', monospace;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Container for the clock widget with a retro hardware feel */
+    .clock-container {
+        width: 100%;
+        height: 100%;
+        background: #1a1a1a;
+        padding: 4px;
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.1),
+            inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        opacity: 0;
+        /* Fade in effect on load */
+        transition: opacity 0.3s ease;
+        position: relative;
+    }
+
+    /* Subtle top highlight for the "plastic" bezel look */
+    .clock-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        pointer-events: none;
+    }
+
+    /* Outer frame of the display screen */
+    .display-frame {
+        width: 100%;
+        height: 100%;
+        background: #0a0a0a;
+        border-radius: 8px;
+        padding: 8px;
+        box-shadow:
+            inset 0 2px 10px rgba(0, 0, 0, 0.5),
+            inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+        position: relative;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* The actual "CRT" screen where content is shown */
+    .display-screen {
+        width: 100%;
+        height: 100%;
+        background: #000;
+        border-radius: 4px;
+        padding: 10px 10px 20px 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        flex: 1;
+    }
+
+    /* CRT Scanline effect using a repeating linear gradient */
+    /* Optimized: Use a static background to reduce layout shift */
+    .display-screen::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(rgba(255, 255, 255, 0.02) 50%, transparent 50%);
+        background-size: 100% 4px;
+        pointer-events: none;
+        opacity: 0.4;
+        z-index: 2;
+    }
+
+    /* The rhyming poem text display */
+    #poem-display {
+        color: #00ff88;
+        font-size: 12px;
+        line-height: 1.5;
+        font-weight: 400;
+        text-align: center;
+        /* Glow effect for retro vibe */
+        text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        white-space: pre-line;
+        width: 100%;
+        z-index: 1;
+        font-family: 'Consolas', 'Lucida Console', monospace;
+    }
+
+    /* Digital time display in the corner */
+    .time-indicator {
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        color: #00ff88;
+        font-size: 11px;
+        opacity: 0.5;
+        font-weight: 400;
+        font-family: 'Consolas', 'Lucida Console', monospace;
+        z-index: 3;
+    }
+
+    /* Pulsing "Power On" LED indicator */
+    .power-light {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 8px;
+        height: 8px;
+        background: #00ff88;
+        border-radius: 50%;
+        box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+        /* Optimized animation: only opacity to avoid repaints */
+        animation: pulse 2s infinite ease-in-out;
+        z-index: 3;
+    }
+
+    @keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.4;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+
+    /* Typing cursor styling */
+    .typing-effect {
+        display: inline-block;
+        width: 8px;
+        height: 14px;
+        background-color: #00ff88;
+        vertical-align: middle;
+        margin-left: 2px;
+        animation: blink-caret 0.75s step-end infinite;
+    }
+
+    @keyframes blink-caret {
+
+        from,
+        to {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0;
+        }
+    }
+</style>
+</head>
+
+<body>
+    <div class="clock-container">
+        <div class="display-frame">
+            <div class="power-light"></div>
+            <div class="display-screen">
+                <!-- Poem content is injected here -->
+                <div id="poem-display">Initializing System...</div>
+                <!-- Mini clock display -->
+                <div class="time-indicator" id="time-indicator"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Configuration & API Settings
+         * Replace with your Gemini API Key for dynamic poems.
+         */
+        /**
+         * Configuration & API Settings
+         * The API key is now injected via the URL parameters for better security.
+         */
+        const urlParams = new URLSearchParams(window.location.search);
+        const GEMINI_API_KEY = urlParams.get('key') || '';
+        const GEMINI_MODEL = 'gemma-3-1b-it'; // Optimized for speed and cost
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+        /**
+         * Translation strings for the UI
+         */
+        const TRANSLATIONS = {
+            "en-US": {
+                "poemPrompt": "Write a very short (4 lines) minimalist poem about the time {timeString}. The poem must rhyme and be simple. Focus on the specific time. Respond with ONLY the 4-line poem.",
+                "fallbackPoem": "The clock strikes {timeString},\nA moment is seen.",
+                "errorMessage": "Error generating poem:",
+                "apiKeyMessage": "⚠️ Add Gemini API key in HTML file."
+            }
+        };
+
+        // Configuration variables
+        const t = (key) => TRANSLATIONS['en-US'][key] || key;
+        const poemDisplay = document.getElementById('poem-display');
+        const timeIndicator = document.getElementById('time-indicator');
+        let currentMinute = -1;
+        let isTyping = false;
+
+        // Initialize Audio Context (Web Audio API) for retro typing sounds
+        let audioContext;
+
+        /**
+         * Lazily initialize audio context on first interaction 
+         * (Browsers block audio until user clicks/moves)
+         */
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+        }
+
+        /**
+         * Generates a short electronic "blip" sound for typing feedback
+         */
+        function createTypingSound() {
+            if (!audioContext || audioContext.state !== 'running') return;
+
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.type = 'sine';
+                // Randomize frequency slightly for a more "mechanical" feel
+                oscillator.frequency.setValueAtTime(400 + Math.random() * 100, audioContext.currentTime);
+
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.015, audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.08);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+
+                // Cleanup: Disconnect nodes after sound finishes to free memory
+                setTimeout(() => {
+                    oscillator.disconnect();
+                    gainNode.disconnect();
+                }, 150);
+            } catch (e) {
+                // Silent fail to preserve performance
+            }
+        }
+
+        /**
+         * Helper to format Date objects into readable strings
+         */
+        function formatTime(date) {
+            return date.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        /**
+         * Fetches a poem from Gemini AI or uses fallback if API key is missing
+         */
+        async function generatePoem(time) {
+            const timeString = formatTime(time);
+
+            // Check if API key is still placeholder or empty
+            if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE' || GEMINI_API_KEY === '') {
+                return t('fallbackPoem').replace('{timeString}', timeString) + '\n\n' + t('apiKeyMessage');
+            }
+
+            const prompt = t('poemPrompt').replace('{timeString}', timeString);
+
+            try {
+                // Perform the API request to Google Gemini
+                const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            temperature: 0.8,
+                            maxOutputTokens: 60,
+                        }
+                    })
+                });
+
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+                const data = await response.json();
+                const poem = data.candidates[0].content.parts[0].text.trim();
+                return poem;
+            } catch (error) {
+                console.error(t('errorMessage'), error);
+                return t('fallbackPoem').replace('{timeString}', timeString);
+            }
+        }
+
+        /**
+         * Animates text character by character with sound effects
+         */
+        async function typePoem(poem) {
+            isTyping = true;
+            poemDisplay.innerHTML = '';
+
+            for (let i = 0; i < poem.length; i++) {
+                // Build text substring and add blinking cursor
+                poemDisplay.innerHTML = poem.substring(0, i + 1) + '<span class="typing-effect"></span>';
+
+                // Trigger sound for visible characters
+                if (poem[i] !== ' ' && poem[i] !== '\n') {
+                    createTypingSound();
+                }
+
+                // Variable typing speed for realism (30ms to 60ms)
+                await new Promise(resolve => setTimeout(resolve, 35));
+            }
+
+            // Final state: Remove typing cursor and show full text
+            poemDisplay.innerHTML = poem;
+            isTyping = false;
+        }
+
+        /**
+         * Core logic loop: Updates the time display and checks for new poems.
+         * Optimized to run only once per minute to save resources.
+         */
+        async function updateClock() {
+            const now = new Date();
+            const currentMinuteNow = now.getMinutes();
+
+            // Only update if the minute has actually changed
+            if (currentMinuteNow !== currentMinute && !isTyping) {
+                currentMinute = currentMinuteNow;
+
+                // Update the digital clock in the corner
+                timeIndicator.textContent = formatTime(now);
+
+                // Generate and type the new poem
+                const poem = await generatePoem(now);
+                await typePoem(poem);
+
+                // After the first manual run, we schedule the next run at the start of the next minute
+                scheduleNextUpdate();
+            }
+        }
+
+        /**
+         * Calculates the delay until the next full minute starts.
+         * This prevents the clock from being "off" by a few seconds.
+         */
+        function scheduleNextUpdate() {
+            const now = new Date();
+            const delay = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+
+            // Sync with the next 00 second mark
+            setTimeout(updateClock, delay + 100); // 100ms buffer to ensure we are in the next minute
+        }
+
+        // Show the UI once initialized
+        setTimeout(() => {
+            document.querySelector('.clock-container').style.opacity = '1';
+        }, 100);
+
+        // Run the clock update immediately
+        updateClock();
+
+        // Global event listener to activate audio engine upon first interaction
+        window.addEventListener('mousedown', initAudio, { once: true });
+        window.addEventListener('keydown', initAudio, { once: true });
+    </script>
+</body>
+
+</html>
