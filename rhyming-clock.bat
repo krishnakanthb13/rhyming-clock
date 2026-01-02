@@ -7,7 +7,10 @@ setlocal
 
 echo [SYSTEM] Initializing Rhyming Clock...
 
-:: 1. Get current folder and convert backslashes to forward slashes
+:: 1. Start Background Logger (Minimized)
+start /min "Rhyming Clock Logger" powershell -ExecutionPolicy Bypass -File "%~dp0logger-server.ps1"
+
+:: 2. Get current folder and convert backslashes to forward slashes
 set "APP_PATH=%~dp0rhyming-clock.html"
 set "APP_PATH=%APP_PATH:\=/%"
 

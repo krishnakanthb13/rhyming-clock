@@ -137,6 +137,21 @@
         z-index: 3;
     }
 
+    /* Status indicator in the top-left */
+    .status-indicator {
+        position: absolute;
+        top: 5px;
+        left: 10px;
+        color: #00ff88;
+        font-size: 12px;
+        opacity: 0.5;
+        font-weight: 400;
+        text-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
+        font-family: 'Consolas', 'Lucida Console', monospace;
+        z-index: 3;
+        letter-spacing: 1px;
+    }
+
     /* Pulsing "Power On" LED indicator */
     .power-light {
         position: absolute;
@@ -150,6 +165,33 @@
         /* Optimized animation: only opacity to avoid repaints */
         animation: pulse 2s infinite ease-in-out;
         z-index: 3;
+    }
+
+    /* Log indicator */
+    .log-indicator {
+        position: absolute;
+        bottom: 5px;
+        left: 10px;
+        color: #00ff88;
+        font-size: 12px;
+        opacity: 0.3;
+        font-weight: 400;
+        text-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
+        font-family: 'Consolas', 'Lucida Console', monospace;
+        z-index: 3;
+        cursor: pointer;
+        transition: opacity 0.3s;
+    }
+
+    .log-indicator:hover {
+        opacity: 0.8;
+    }
+
+    .log-indicator.active {
+        opacity: 0.8;
+        color: #ff3366;
+        /* Red for recording/logging */
+        text-shadow: 0 0 5px rgba(255, 51, 102, 0.5);
     }
 
     @keyframes pulse {
@@ -196,6 +238,10 @@
         <div class="display-frame">
             <div class="power-light"></div>
             <div class="display-screen">
+                <!-- Status indicator -->
+                <div class="status-indicator" id="status-indicator">SYS_MODE: INIT</div>
+                <!-- Log indicator -->
+                <div class="log-indicator" id="log-indicator" onclick="checkLoggerStatus()">[ LOG: OFFLINE ]</div>
                 <!-- Poem content is injected here -->
                 <div id="poem-display">Initializing System...</div>
                 <!-- Mini clock display -->
@@ -223,7 +269,7 @@
          */
         const TRANSLATIONS = {
             "en-US": {
-                "poemPrompt": "Write a very short (4 lines) minimalist poem about the time {timeString}. The poem must rhyme and be simple. Focus on the specific time. Respond with ONLY the 4-line poem.",
+                "poemPrompt": "Write a very short (4 lines) minimalist poem about the time {timeString}. The poem must rhyme and be simple. Focus on the specific time. The mood of the poem should be {personality} and Random. Respond with ONLY the 4-line poem. Be Creative everytime!",
                 "fallbackPoem": "The clock strikes {timeString},\nA moment is seen.",
                 "errorMessage": "Error generating poem:",
                 "apiKeyMessage": "⚠️ Add Gemini API key in HTML file."
@@ -234,8 +280,11 @@
         const t = (key) => TRANSLATIONS['en-US'][key] || key;
         const poemDisplay = document.getElementById('poem-display');
         const timeIndicator = document.getElementById('time-indicator');
+        const logIndicator = document.getElementById('log-indicator');
+
         let currentMinute = -1;
         let isTyping = false;
+        const LOGGER_URL = 'http://localhost:8088/';
 
         // Initialize Audio Context (Web Audio API) for retro typing sounds
         let audioContext;
@@ -299,17 +348,77 @@
         }
 
         /**
+         * Automated background logging check
+         */
+        async function checkLoggerStatus() {
+            try {
+                const response = await fetch(LOGGER_URL, { method: 'OPTIONS' });
+                if (response.status === 200) {
+                    logIndicator.textContent = '[ LOG: AUTO ]';
+                    logIndicator.classList.add('active');
+                    return true;
+                }
+            } catch (err) {
+                logIndicator.textContent = '[ LOG: OFFLINE ]';
+                logIndicator.classList.remove('active');
+                return false;
+            }
+        }
+
+        /**
+         * Appends text to the background log server
+         */
+        async function appendToLog(text) {
+            try {
+                const response = await fetch(LOGGER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: text
+                });
+
+                if (response.ok) {
+                    logIndicator.textContent = '[ LOG: OK ]';
+                    logIndicator.classList.add('active');
+                    setTimeout(() => {
+                        logIndicator.textContent = '[ LOG: AUTO ]';
+                    }, 2000);
+                }
+            } catch (err) {
+                console.warn('Logger not found. Use run-logger.bat to enable.');
+                logIndicator.textContent = '[ LOG: OFFLINE ]';
+                logIndicator.classList.remove('active');
+            }
+        }
+
+        /**
+         * Gets the personality/flavor based on the current hour
+         */
+        function getPersonality(date) {
+            const hour = date.getHours();
+            if (hour >= 5 && hour < 12) return { prompt: "motivating and energetic", label: "MOTIVATING" };
+            if (hour >= 12 && hour < 17) return { prompt: "dull, bored, and monotonous", label: "DULL" };
+            if (hour >= 17 && hour < 21) return { prompt: "easy, relaxed, and mellow", label: "EASY" };
+            return { prompt: "kinky, mysterious, and late-night provocative", label: "KINKY" };
+        }
+
+        /**
          * Fetches a poem from Gemini AI or uses fallback if API key is missing
          */
         async function generatePoem(time) {
             const timeString = formatTime(time);
+            const personality = getPersonality(time);
+
+            // Update UI status
+            document.getElementById('status-indicator').textContent = `SYS_MODE: ${personality.label}`;
 
             // Check if API key is still placeholder or empty
             if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE' || GEMINI_API_KEY === '') {
                 return t('fallbackPoem').replace('{timeString}', timeString) + '\n\n' + t('apiKeyMessage');
             }
 
-            const prompt = t('poemPrompt').replace('{timeString}', timeString);
+            const prompt = t('poemPrompt')
+                .replace('{timeString}', timeString)
+                .replace('{personality}', personality.prompt);
 
             try {
                 // Perform the API request to Google Gemini
@@ -329,6 +438,11 @@
 
                 const data = await response.json();
                 const poem = data.candidates[0].content.parts[0].text.trim();
+
+                // Log the interaction
+                const timestamp = new Date().toLocaleString();
+                appendToLog(`[${timestamp}] [${personality.label}] \n${poem}\n\n`);
+
                 return poem;
             } catch (error) {
                 console.error(t('errorMessage'), error);
@@ -427,6 +541,8 @@
 
         // Run the clock update immediately
         updateClock();
+        // Check logger status immediately
+        checkLoggerStatus();
 
         // Global event listener to activate audio engine upon first interaction
         window.addEventListener('mousedown', initAudio, { once: true });

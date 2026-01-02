@@ -1,7 +1,10 @@
 # 🕰️ Rhyming Clock
 
 ![Screenshot](screenshot1.png)
+
 ![Screenshot](screenshot2.png)
+
+![Screenshot](screenshot3.png)
 
 > **A retro-styled desktop companion that turns the passing of time into poetry.**
 
@@ -12,8 +15,14 @@ A minimalist widget that uses AI to generate a unique rhyming poem for every min
 - **Retro Aesthetic**: Designed with a CRT-style display, scanlines, and a pulsing power LED.
 - **Minimalist Window**: Launches in a small, non-intrusive 300x200 window in the top-right corner of your screen.
 - **Typing Sound Effects**: Authentic mechanical typing sounds as the poem appears.
+- **Time-Based Personalities**: The clock's "mood" changes throughout the day:
+  - 🌅 **Morning**: Motivating & energetic.
+  - ☀️ **Noon**: Dull & monotonous.
+  - 🌆 **Evening**: Easy & relaxed.
+  - 🌙 **Night**: Kinky & provocative.
+- **Automated Local Logging**: Every poem is automatically recorded to `rhyming-clock-log.txt` via a background helper.
 - **Resource Efficient**: Ultra-low resource usage. The app syncs with the system clock and only refreshes once per minute.
-- **Smart Background Pause**: Automatically pauses all AI generation and processing when the window is minimized or hidden, saving your API quota and system memory.
+- **Smart Background Pause**: Automatically pauses all AI generation and processing when the window is minimized or hidden.
 - **Improved Reliability**: Robust launcher script with automatic path correction and screen detection.
 
 ## 🚀 Getting Started
@@ -34,7 +43,12 @@ A minimalist widget that uses AI to generate a unique rhyming poem for every min
 ### Running the Clock
 Simply double-click **`rhyming-clock.bat`**. 
 
-The clock will automatically position itself in the top-right corner of your screen. You can close the terminal window once the clock appears.
+This will automatically:
+1. Start a minimized background logger window.
+2. Launch the clock widget and position it in the top-right corner.
+3. Automatically connect the clock to the logger (**`[ LOG: AUTO ]`** will appear).
+
+You can close the launcher terminal, but keep the minimized **Rhyming Clock Logger** window open if you wish to record your poems.
 
 ## 🛠️ Customization
 - **Change Window Size**: Edit the `WIDTH` and `HEIGHT` values in `rhyming-clock.bat`.
