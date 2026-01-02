@@ -35,8 +35,10 @@ A single-file SPA (Single Page Application) that handles the UI, Clock, and AI i
 
 ### 2. Logic (JavaScript)
 - **1-Minute Sync Loop**: Instead of checking every second, the app uses a `scheduleNextUpdate()` function. It calculates the exact remaining milliseconds in the current minute and sets a high-efficiency `setTimeout`.
+- **Visibility-Aware Processing**: The app utilizes the **Page Visibility API**. Inside the update loop, it checks `document.visibilityState`. If the window is hidden or minimized, it skips the expensive Gemini API call and the typing animation.
+- **Instant Catch-up**: A listener on `visibilitychange` ensures that as soon as the window becomes visible again, the app immediately checks if the time has changed and generates a fresh poem if needed.
 - **AI Integration**:
-  - When the minute changes, it calls `generatePoem(now)`.
+  - When the minute changes and the window is visible, it calls `generatePoem(now)`.
   - It sends a JSON POST request to the Google Gemini API.
   - The prompt is carefully crafted to ensure the AI returns ONLY the poem, keeping the UI clean.
 - **Typing Engine**: 

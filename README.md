@@ -11,7 +11,8 @@ A minimalist widget that uses AI to generate a unique rhyming poem for every min
 - **Retro Aesthetic**: Designed with a CRT-style display, scanlines, and a pulsing power LED.
 - **Minimalist Window**: Launches in a small, non-intrusive 300x200 window in the top-right corner of your screen.
 - **Typing Sound Effects**: Authentic mechanical typing sounds as the poem appears.
-- **Resource Efficient**: Ultra-low resource usage. The app now syncs with the system clock and only refreshes once per minute, minimizing background processing.
+- **Resource Efficient**: Ultra-low resource usage. The app syncs with the system clock and only refreshes once per minute.
+- **Smart Background Pause**: Automatically pauses all AI generation and processing when the window is minimized or hidden, saving your API quota and system memory.
 - **Improved Reliability**: Robust launcher script with automatic path correction and screen detection.
 
 ## 🚀 Getting Started

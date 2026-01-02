@@ -110,7 +110,7 @@
     /* The rhyming poem text display */
     #poem-display {
         color: #00ff88;
-        font-size: 12px;
+        font-size: 13px;
         line-height: 1.5;
         font-weight: 400;
         text-align: center;
@@ -128,9 +128,11 @@
         bottom: 5px;
         right: 5px;
         color: #00ff88;
-        font-size: 11px;
-        opacity: 0.5;
+        font-size: 13px;
+        opacity: 0.8;
         font-weight: 400;
+        /* Glow effect for retro vibe */
+        text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
         font-family: 'Consolas', 'Lucida Console', monospace;
         z-index: 3;
     }
@@ -362,43 +364,66 @@
         /**
          * Core logic loop: Updates the time display and checks for new poems.
          * Optimized to run only once per minute to save resources.
+         * optimized to stay completely idle when hidden.
          */
         async function updateClock() {
             const now = new Date();
             const currentMinuteNow = now.getMinutes();
 
+            // If the window is hidden, we do ABSOLUTELY NOTHING.
+            // This is the max-power-saving mode.
+            if (document.visibilityState !== 'visible') {
+                return;
+            }
+
             // Only update if the minute has actually changed
-            if (currentMinuteNow !== currentMinute && !isTyping) {
+            if (currentMinuteNow !== currentMinute) {
                 currentMinute = currentMinuteNow;
 
-                // Update the digital clock in the corner
+                // Update the digital clock
                 timeIndicator.textContent = formatTime(now);
 
-                // Generate and type the new poem
-                const poem = await generatePoem(now);
-                await typePoem(poem);
-
-                // After the first manual run, we schedule the next run at the start of the next minute
-                scheduleNextUpdate();
+                // Trigger AI Poem
+                if (!isTyping) {
+                    console.log(`[SYSTEM] Triggering AI poem for ${formatTime(now)}`);
+                    const poem = await generatePoem(now);
+                    await typePoem(poem);
+                }
             }
+
+            // Re-schedule the next check
+            scheduleNextUpdate();
         }
 
         /**
-         * Calculates the delay until the next full minute starts.
-         * This prevents the clock from being "off" by a few seconds.
+         * Reschedules the update loop for the start of the next minute.
          */
         function scheduleNextUpdate() {
+            // Clear any existing timeouts to prevent duplicates
+            if (window.clockTimeout) clearTimeout(window.clockTimeout);
+
             const now = new Date();
             const delay = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
 
-            // Sync with the next 00 second mark
-            setTimeout(updateClock, delay + 100); // 100ms buffer to ensure we are in the next minute
+            window.clockTimeout = setTimeout(updateClock, delay + 100);
         }
 
         // Show the UI once initialized
         setTimeout(() => {
             document.querySelector('.clock-container').style.opacity = '1';
         }, 100);
+
+        // Handle window visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                console.log("[SYSTEM] Window visible. Resuming updates...");
+                updateClock();
+            } else {
+                console.log("[SYSTEM] Window hidden. AI & UI updates paused.");
+                // Stop the timer if hidden to be 100% sure nothing runs
+                if (window.clockTimeout) clearTimeout(window.clockTimeout);
+            }
+        });
 
         // Run the clock update immediately
         updateClock();
