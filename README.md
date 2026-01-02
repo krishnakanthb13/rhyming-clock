@@ -1,6 +1,7 @@
 # 🕰️ Rhyming Clock
 
-![Screenshot](screenshot.png)
+![Screenshot](screenshot1.png)
+![Screenshot](screenshot2.png)
 
 > **A retro-styled desktop companion that turns the passing of time into poetry.**
 
