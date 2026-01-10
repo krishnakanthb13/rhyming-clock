@@ -6,6 +6,8 @@
 
 ![Screenshot](screenshot3.png)
 
+![Screenshot](screenshot4.png)
+
 > **A retro-styled desktop companion that turns the passing of time into poetry.**
 
 A minimalist widget that uses AI to generate a unique rhyming poem for every minute of the day, displayed on a glowing CRT monitor.
