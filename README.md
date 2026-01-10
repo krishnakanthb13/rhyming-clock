@@ -14,7 +14,8 @@ A minimalist widget that uses AI to generate a unique rhyming poem for every min
 - **AI-Powered Poetry**: Every minute, a new 2-line rhyming poem is generated based on the current time using Google Gemini AI.
 - **Retro Aesthetic**: Designed with a CRT-style display, scanlines, and a pulsing power LED.
 - **Minimalist Window**: Launches in a small, non-intrusive 300x200 window in the top-right corner of your screen.
-- **Typing Sound Effects**: Authentic mechanical typing sounds as the poem appears.
+- **Typing Sound Effects**: Authentic mechanical typing sounds as the poem appears (volume adjustable).
+- **Text-to-Speech (TTS)**: Poems are read aloud automatically using the free, local Web Speech API. Multiple voice options available. No internet required for speech.
 - **Time-Based Personalities**: The clock's "mood" changes throughout the day:
   - 🌅 **Morning**: Motivating & energetic.
   - ☀️ **Noon**: Dull & monotonous.
@@ -54,6 +55,8 @@ You can close the launcher terminal, but keep the minimized **Rhyming Clock Logg
 - **Change Window Size**: Edit the `WIDTH` and `HEIGHT` values in `rhyming-clock.bat`.
 - **Change Poem Style**: Modify the `poemPrompt` in the `TRANSLATIONS` section of `rhyming-clock.html`.
 - **Colors & Fonts**: Standard CSS can be modified in the `<style>` block of `rhyming-clock.html`.
+- **TTS Voice**: Change `TTS_PREFERRED_VOICE` in `rhyming-clock.html`. Options include `Microsoft David`, `Microsoft Zira`, `Google US English`, etc.
+- **Typing Sound Volume**: Adjust `TYPING_SOUND_VOLUME` in `rhyming-clock.html` (range: `0` to `0.05`).
 
 ## 🤝 Contributing
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.

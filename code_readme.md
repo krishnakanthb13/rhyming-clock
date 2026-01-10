@@ -20,6 +20,7 @@ The batch script acts as a wrapper to launch the web page as a standalone deskto
 - **Robust Position Calculation**: Uses the `System.Windows.Forms` assembly via PowerShell to accurately detect the primary screen's width, ensuring the widget is perfectly placed regardless of DPI scaling.
 - **App Mode Launch**: Uses the `--app` flag in Chrome/Edge. This removes the browser UI (tabs, address bar), making the HTML page look like a native application.
 - **Profile Isolation**: Uses `--user-data-dir="%TEMP%\RhymingClockProfile"`. This prevents the widget from interfering with your main browser tabs or history.
+- **Autoplay Policy Bypass**: Uses `--autoplay-policy=no-user-gesture-required` to allow TTS and typing sounds to play immediately without requiring user interaction.
 
 ---
 
@@ -53,6 +54,19 @@ A single-file SPA (Single Page Application) that handles the UI, Clock, and AI i
 - **Async Logging**: When a poem is generated, the app sends the formatted text to the background server via a `POST` request.
 - **UI Status**: The `[ LOG ]` indicator updates to `AUTO` if a connection is established, or `OFFLINE` if the server isn't running.
 
+### 4. Text-to-Speech (Web Speech API)
+- **Free & Local**: Uses the browser's built-in `speechSynthesis` API—no external services or API keys required.
+- **Enabled by Default**: TTS is on by default. Click `[ TTS: ON ]` to disable; preference is saved to `localStorage`.
+- **Voice Selection**: Configurable via `TTS_PREFERRED_VOICE`. Supports Windows (`Microsoft David`, `Microsoft Zira`), Chrome (`Google US English`), and macOS voices.
+- **Voice Preloading**: Uses `onvoiceschanged` event to cache voices before first speech, ensuring preferred voice works from the first poem.
+- **Speech Parameters**: `rate: 0.85` (slightly slower for poetry clarity), `pitch: 1`, `volume: 1`.
+- **Text Cleanup**: Newlines are replaced with periods for natural speech flow.
+- **Visual Feedback**: The indicator shows `[ TTS: ▶ ]` while speaking, then returns to `[ TTS: ON ]`.
+
+### 5. Audio Configuration
+- **Typing Sound Volume**: Configurable via `TYPING_SOUND_VOLUME` (range: `0` to `0.05`).
+- **Immediate Audio Init**: Audio context initializes on page load (enabled by Chrome's autoplay policy flag).
+
 ---
 
 ---
@@ -75,6 +89,6 @@ Based on user feedback, the following optimizations have been implemented:
 1.  **Ultra-Low Wakeups**: Replaced the 1-second interval with a 1-minute smart sync, allowing the browser process to remain virtually idle.
 2.  **Hardware Acceleration**: Animations now use `opacity` instead of property changes that trigger layout reflows.
 3.  **Audio Node Disposal**: Web Audio nodes are cleaned up after use.
-4.  **Lazy Audio Initialization**: The audio context starts only after user interaction.
-5.  **Browser Flags**: Added `--disable-extensions`, `--no-first-run`, and others to minimize the Chromium footprint.
+4.  **Immediate Audio Initialization**: Audio context and TTS voices are initialized on page load via Chrome's `--autoplay-policy` flag.
+5.  **Browser Flags**: Added `--disable-extensions`, `--no-first-run`, `--autoplay-policy=no-user-gesture-required` to minimize Chromium footprint and enable immediate audio.
 6.  **Minimized Logger**: The logging server is launched minimized to avoid cluttering the desktop.

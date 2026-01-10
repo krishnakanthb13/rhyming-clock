@@ -48,7 +48,8 @@ set /a POS_X=%SCR_W% - %WIDTH% - %MARGIN%
 set POS_Y=%MARGIN%
 
 :: 6. Launch Arguments
-set "ARGS=--app="%APP_URL%" --window-size=%WIDTH%,%HEIGHT% --window-position=%POS_X%,%POS_Y% --user-data-dir="%TEMP%\RhymingClockProfile" --disable-extensions --no-first-run"
+:: --autoplay-policy=no-user-gesture-required allows audio/TTS to play without clicking first
+set "ARGS=--app="%APP_URL%" --window-size=%WIDTH%,%HEIGHT% --window-position=%POS_X%,%POS_Y% --user-data-dir="%TEMP%\RhymingClockProfile" --disable-extensions --no-first-run --autoplay-policy=no-user-gesture-required"
 
 :: 7. Launch the Browser
 echo [SYSTEM] Launching widget...

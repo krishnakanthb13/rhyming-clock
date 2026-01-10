@@ -194,6 +194,34 @@
         text-shadow: 0 0 5px rgba(255, 51, 102, 0.5);
     }
 
+    /* TTS indicator */
+    .tts-indicator {
+        position: absolute;
+        bottom: 5px;
+        left: 120px;
+        color: #00ff88;
+        font-size: 12px;
+        opacity: 0.3;
+        font-weight: 400;
+        text-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
+        font-family: 'Consolas', 'Lucida Console', monospace;
+        z-index: 3;
+        cursor: pointer;
+        transition: opacity 0.3s, color 0.3s;
+        user-select: none;
+    }
+
+    .tts-indicator:hover {
+        opacity: 0.8;
+    }
+
+    .tts-indicator.active {
+        opacity: 0.8;
+        color: #ffcc00;
+        /* Yellow/gold for speaking */
+        text-shadow: 0 0 5px rgba(255, 204, 0, 0.5);
+    }
+
     @keyframes pulse {
         0% {
             opacity: 1;
@@ -242,6 +270,8 @@
                 <div class="status-indicator" id="status-indicator">SYS_MODE: INIT</div>
                 <!-- Log indicator -->
                 <div class="log-indicator" id="log-indicator" onclick="checkLoggerStatus()">[ LOG: OFFLINE ]</div>
+                <!-- TTS indicator -->
+                <div class="tts-indicator" id="tts-indicator" onclick="toggleTTS()">[ TTS: OFF ]</div>
                 <!-- Poem content is injected here -->
                 <div id="poem-display">Initializing System...</div>
                 <!-- Mini clock display -->
@@ -265,6 +295,50 @@
         const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
         /**
+         * TTS Voice Configuration
+         * Available voices vary by browser and OS. Common options:
+         * 
+         * Windows 11 voices (Edge/Chrome):
+         *   - 'Microsoft David'    // Male, US English
+         *   - 'Microsoft Zira'     // Female, US English  
+         *   - 'Microsoft Mark'     // Male, US English
+         *   - 'Microsoft Eva'      // Female, US English (Mobile-style)
+         * 
+         * Google Chrome voices:
+         *   - 'Google US English'  // Natural female voice
+         *   - 'Google UK English Female'
+         *   - 'Google UK English Male'
+         * 
+         * macOS voices:
+         *   - 'Samantha'           // Female, US English
+         *   - 'Alex'               // Male, US English
+         *   - 'Victoria'           // Female, US English
+         * 
+         * Set to null/empty to use system default voice.
+         * To see all available voices, open browser console and run:
+         *   speechSynthesis.getVoices().map(v => v.name)
+         */
+        // const TTS_PREFERRED_VOICE = 'Microsoft Eva';  // Change this to your preferred voice
+        // const TTS_PREFERRED_VOICE = 'Microsoft David';
+        const TTS_PREFERRED_VOICE = 'Google US English';
+        // const TTS_PREFERRED_VOICE = null;  // Use system default
+
+        /**
+         * Typing Sound Volume Configuration
+         * Controls the volume of the retro typing "blip" sounds.
+         * 
+         * Recommended values:
+         *   0.005  - Very quiet (barely audible)
+         *   0.010  - Quiet
+         *   0.015  - Default (subtle)
+         *   0.025  - Medium
+         *   0.035  - Loud
+         *   0.050  - Very loud
+         *   0      - Muted (no typing sounds)
+         */
+        const TYPING_SOUND_VOLUME = 0.050;  // Change this value (0 to 0.05)
+
+        /**
          * Translation strings for the UI
          */
         const TRANSLATIONS = {
@@ -281,10 +355,102 @@
         const poemDisplay = document.getElementById('poem-display');
         const timeIndicator = document.getElementById('time-indicator');
         const logIndicator = document.getElementById('log-indicator');
+        const ttsIndicator = document.getElementById('tts-indicator');
 
         let currentMinute = -1;
         let isTyping = false;
+        // TTS enabled by default. Only disabled if user explicitly turned it off.
+        let ttsEnabled = localStorage.getItem('ttsEnabled') !== 'false';
         const LOGGER_URL = 'http://localhost:8088/';
+
+        // Cached voices list (loaded asynchronously by browser)
+        let cachedVoices = [];
+
+        // Initialize TTS indicator and preload voices
+        function initTTS() {
+            updateTTSIndicator();
+
+            // Preload voices - they load asynchronously in some browsers
+            cachedVoices = speechSynthesis.getVoices();
+
+            // Listen for voices to be loaded (Chrome loads them async)
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = () => {
+                    cachedVoices = speechSynthesis.getVoices();
+                    console.log('[TTS] Voices loaded:', cachedVoices.length);
+                };
+            }
+        }
+
+        // Update TTS indicator UI
+        function updateTTSIndicator() {
+            if (ttsEnabled) {
+                ttsIndicator.textContent = '[ TTS: ON ]';
+                ttsIndicator.classList.add('active');
+            } else {
+                ttsIndicator.textContent = '[ TTS: OFF ]';
+                ttsIndicator.classList.remove('active');
+            }
+        }
+
+        // Toggle TTS on/off
+        function toggleTTS() {
+            ttsEnabled = !ttsEnabled;
+            localStorage.setItem('ttsEnabled', ttsEnabled);
+            updateTTSIndicator();
+
+            // If turning on, speak a confirmation
+            if (ttsEnabled) {
+                speakText('Text to speech enabled');
+            } else {
+                // Cancel any ongoing speech when turning off
+                speechSynthesis.cancel();
+            }
+        }
+
+        // Speak text using Web Speech API
+        function speakText(text) {
+            if (!ttsEnabled) return;
+
+            // Cancel any ongoing speech first
+            speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 0.85;  // Slightly slower for poetry
+            utterance.pitch = 1;
+            utterance.volume = 1;
+
+            // Apply preferred voice if configured
+            if (TTS_PREFERRED_VOICE) {
+                // Use cached voices, fallback to fresh fetch
+                const voices = cachedVoices.length > 0 ? cachedVoices : speechSynthesis.getVoices();
+                const preferredVoice = voices.find(v => v.name.includes(TTS_PREFERRED_VOICE));
+                if (preferredVoice) {
+                    utterance.voice = preferredVoice;
+                }
+            }
+
+            // Brief indicator animation while speaking
+            ttsIndicator.textContent = '[ TTS: ▶ ]';
+
+            utterance.onend = () => {
+                ttsIndicator.textContent = '[ TTS: ON ]';
+            };
+
+            utterance.onerror = () => {
+                ttsIndicator.textContent = '[ TTS: ON ]';
+            };
+
+            speechSynthesis.speak(utterance);
+        }
+
+        // Speak the poem (called after typing completes)
+        function speakPoem(poem) {
+            if (!ttsEnabled) return;
+            // Clean up the poem text for better speech
+            const cleanText = poem.replace(/[\n]+/g, '. ').replace(/\s+/g, ' ').trim();
+            speakText(cleanText);
+        }
 
         // Initialize Audio Context (Web Audio API) for retro typing sounds
         let audioContext;
@@ -320,7 +486,7 @@
                 oscillator.frequency.setValueAtTime(400 + Math.random() * 100, audioContext.currentTime);
 
                 gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-                gainNode.gain.linearRampToValueAtTime(0.015, audioContext.currentTime + 0.01);
+                gainNode.gain.linearRampToValueAtTime(TYPING_SOUND_VOLUME, audioContext.currentTime + 0.01);
                 gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.08);
 
                 oscillator.start(audioContext.currentTime);
@@ -473,6 +639,9 @@
             // Final state: Remove typing cursor and show full text
             poemDisplay.innerHTML = poem;
             isTyping = false;
+
+            // Read aloud if TTS is enabled
+            speakPoem(poem);
         }
 
         /**
@@ -543,8 +712,12 @@
         updateClock();
         // Check logger status immediately
         checkLoggerStatus();
+        // Initialize TTS state
+        initTTS();
+        // Initialize audio immediately (autoplay policy bypassed via Chrome flag)
+        initAudio();
 
-        // Global event listener to activate audio engine upon first interaction
+        // Fallback: Also listen for user interaction in case autoplay policy applies
         window.addEventListener('mousedown', initAudio, { once: true });
         window.addEventListener('keydown', initAudio, { once: true });
     </script>
