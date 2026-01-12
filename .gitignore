@@ -10,6 +10,7 @@ Desktop.ini
 
 # Logs
 *.log
+rhyming-clock-log.txt
 
 # Temporary files
 *.tmp

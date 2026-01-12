@@ -7,7 +7,7 @@ Thank you for your interest in contributing to the Rhyming Clock project! Wether
 1.  **Fork the Repository**: Click the "Fork" button at the top right of this page.
 2.  **Clone your Fork**:
     ```bash
-    git clone https://github.com/YOUR_USERNAME/rhyming-clock.git
+    git clone https://github.com/krishnakanthb13/rhyming-clock.git
     ```
 3.  **Create a Branch**:
     ```bash
@@ -36,4 +36,29 @@ Thank you for your interest in contributing to the Rhyming Clock project! Wether
 If you find a bug, please open an issue with:
 -   A description of the bug.
 -   Steps to reproduce.
--   Your browser and OS version.
+-   Your browser (Chrome/Edge) and OS version.
+
+## Suggesting Features
+
+We love new ideas! When suggesting a feature:
+-   Check if it aligns with the [Design Philosophy](DESIGN_PHILOSOPHY.md).
+-   Explain the use case and how it benefits the user.
+-   Keep in mind the "Minimalist" and "Single File" core principles.
+
+## Development Setup
+
+1.  **Browser**: Use a Chromium-based browser (Google Chrome or Microsoft Edge).
+2.  **API Key**: Obtain a Gemini API key from [Google AI Studio](https://aistudio.google.com/).
+3.  **Environment**: Create a `.env` file in the root directory with `GEMINI_API_KEY=your_key_here`.
+4.  **Local Server (Optional)**: If you want to test the logger, run `run-logger.bat`.
+
+## Testing Checklist
+
+Before submitting a Pull Request, please ensure:
+- [ ] No API keys or sensitive secrets are hardcoded in `rhyming-clock.html`.
+- [ ] The app still launches correctly in `--app` mode via `rhyming-clock.bat`.
+- [ ] The "Page Visibility" logic works (AI generation pauses when minimized).
+- [ ] Mechanical typing sounds and TTS are functioning.
+- [ ] Changes adhere to the existing CSS styling and CRT aesthetic.
+- [ ] The code is well-commented for significant logic changes.
+

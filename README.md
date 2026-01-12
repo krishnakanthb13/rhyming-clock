@@ -1,5 +1,8 @@
 # 🕰️ Rhyming Clock
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+
 ![Screenshot](screenshot1.png)
 
 ![Screenshot](screenshot2.png)
@@ -62,6 +65,11 @@ You can close the launcher terminal, but keep the minimized **Rhyming Clock Logg
 
 ## 🤝 Contributing
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+## 📖 Documentation
+- **[Design Philosophy](DESIGN_PHILOSOPHY.md)**: The "Why" behind the project and its core principles.
+- **[Technical Walkthrough](CODE_DOCUMENTATION.md)**: In-depth details on the architecture, code functions, and API integrations.
+
 
 ## ⚠️ Security Note
 **Never commit your `rhyming-clock.html` with your real API key inside.**
