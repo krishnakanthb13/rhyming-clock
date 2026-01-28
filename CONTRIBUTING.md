@@ -49,7 +49,7 @@ We love new ideas! When suggesting a feature:
 
 1.  **Browser**: Use a Chromium-based browser (Google Chrome or Microsoft Edge).
 2.  **API Key**: Obtain a Gemini API key from [Google AI Studio](https://aistudio.google.com/).
-3.  **Environment**: Create a `.env` file in the root directory with `GEMINI_API_KEY=your_key_here`.
+3.  **Environment**: Run `rhyming-clock.bat` (Windows) or `rhyming-clock.sh` (Mac/Linux) to automatically generate the `.env` file from `.env.example`, then add your `GEMINI_API_KEY`.
 4.  **Local Server (Optional)**: If you want to test the logger, run `run-logger.bat`.
 
 ## Testing Checklist

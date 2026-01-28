@@ -16,6 +16,17 @@ set "APP_PATH=%APP_PATH:\=/%"
 
 :: 2. Load API Key from .env file
 echo [SYSTEM] Loading configurations...
+
+:: Initialize .env from .env.example if missing
+if not exist "%~dp0.env" (
+    if exist "%~dp0.env.example" (
+        echo [SYSTEM] Creating .env from .env.example...
+        copy "%~dp0.env.example" "%~dp0.env" >nul
+    ) else (
+        echo [WARNING] .env.example not found. Manual .env creation may be needed.
+    )
+)
+
 set "API_KEY="
 if exist "%~dp0.env" (
     for /f "usebackq tokens=1* delims==" %%A in ("%~dp0.env") do (

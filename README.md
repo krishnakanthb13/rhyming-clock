@@ -39,10 +39,10 @@ A minimalist widget that uses AI to generate a unique rhyming poem for every min
 
 ### Installation & Setup
 1.  Clone or download this repository.
-2.  Create a file named `.env` in the same folder.
-3.  Add your API key to it like this:
+2.  The application uses a `.env` file for configuration. This will be created automatically from `.env.example` the first time you run it.
+3.  Open the newly created `.env` file and add your API key:
     ```
-    GEMINI_API_KEY=AIqs......
+    GEMINI_API_KEY=your-gemini-key-here
     ```
 4.  Save the file.
 

@@ -16,11 +16,13 @@ The project is built as a lightweight, single-page desktop widget composed of th
 
 | File | Type | Description |
 | :--- | :--- | :--- |
-| `rhyming-clock.bat` | Batch Script | The entry point. Configures window size, position, and browser flags. |
+| `rhyming-clock.bat` | Batch Script | The entry point. Configures window size, position, and browser flags. Initializes `.env` if missing. |
+| `rhyming-clock.sh` | Shell Script | Linux/macOS equivalent of the launcher. |
 | `rhyming-clock.html` | HTML/JS/CSS | The core application logic and UI. |
 | `logger-server.ps1` | PowerShell | Local HTTP listener that writes poems to `rhyming-clock-log.txt`. |
 | `run-logger.bat` | Batch Script | Helper to launch the PowerShell logger. |
-| `.env` | Config | Stores the `GEMINI_API_KEY`. |
+| `.env.example` | Template | Template for environment variables. |
+| `.env` | Config | Stores the `GEMINI_API_KEY`. (Created from `.env.example`) |
 | `rhyming-clock-log.txt` | Log File | Plain text file containing the history of generated poems. |
 
 ---
@@ -52,8 +54,9 @@ The project is built as a lightweight, single-page desktop widget composed of th
 
 ### Google Gemini API
 The app uses the `gemini-1.5-flash` model (or similar) to generate rhymes. 
-- **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`
-- **Authentication**: Provided via an API Key in the `.env` file (parsed by the HTML via a fetch check).
+- **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
+- **Authentication**: Provided via an API Key in the `.env` file (parsed by the launcher and passed as a URL parameter).
+- **Initialization**: The launcher scripts automatically create `.env` from `.env.example` if it is not present.
 - **Prompting**: Uses a "Personality" system where the system prompt changes based on the time of day.
 
 ### Web Speech API
