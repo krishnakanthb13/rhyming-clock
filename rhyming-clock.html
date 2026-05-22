@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rhyming Clock</title>
@@ -300,10 +301,44 @@
          * The clock normally fires only ~1 request/minute, but rapid visibility
          * toggles or other re-triggers could spike that. This sliding-window
          * guard ensures we never exceed the quota and fall back gracefully.
+         * Timestamps are persisted to localStorage so the quota is enforced
+         * across page reloads.
          */
         const GEMINI_RPM_LIMIT = 15;            // Max requests per 60s window
         const RATE_LIMIT_WINDOW_MS = 60 * 1000; // Sliding window size
-        const requestTimestamps = [];           // Timestamps of recent API calls
+        const RATE_LIMIT_STORAGE_KEY = 'gemini_request_timestamps';
+
+        /**
+         * Loads recent request timestamps from localStorage, discarding any
+         * that fall outside the current sliding window or are malformed.
+         */
+        function loadRequestTimestamps() {
+            try {
+                const stored = JSON.parse(localStorage.getItem(RATE_LIMIT_STORAGE_KEY) || '[]');
+                if (Array.isArray(stored)) {
+                    const now = Date.now();
+                    return stored.filter(ts => typeof ts === 'number' && now - ts < RATE_LIMIT_WINDOW_MS);
+                }
+            } catch (e) {
+                // Corrupt or unavailable storage — start fresh.
+            }
+            return [];
+        }
+
+        // Timestamps of recent API calls (restored across reloads).
+        const requestTimestamps = loadRequestTimestamps();
+
+        /**
+         * Records an API request and persists the window to localStorage.
+         */
+        function recordRequest() {
+            requestTimestamps.push(Date.now());
+            try {
+                localStorage.setItem(RATE_LIMIT_STORAGE_KEY, JSON.stringify(requestTimestamps));
+            } catch (e) {
+                // Storage unavailable — the in-memory limiter still works.
+            }
+        }
 
         /**
          * Returns true if a new API request is allowed under the RPM limit.
@@ -382,6 +417,9 @@
 
         let currentMinute = -1;
         let isTyping = false;
+        // True while a poem is being fetched/typed — guards against concurrent
+        // runs triggered by both the scheduled timer and visibility changes.
+        let isGenerating = false;
         // TTS enabled by default. Only disabled if user explicitly turned it off.
         let ttsEnabled = localStorage.getItem('ttsEnabled') !== 'false';
         const LOGGER_URL = 'http://localhost:8088/';
@@ -542,11 +580,15 @@
         async function checkLoggerStatus() {
             try {
                 const response = await fetch(LOGGER_URL, { method: 'OPTIONS' });
-                if (response.status === 200) {
+                if (response.ok) {
                     logIndicator.textContent = '[ LOG: AUTO ]';
                     logIndicator.classList.add('active');
                     return true;
                 }
+                // Reachable but returned an error status — treat as offline.
+                logIndicator.textContent = '[ LOG: OFFLINE ]';
+                logIndicator.classList.remove('active');
+                return false;
             } catch (err) {
                 logIndicator.textContent = '[ LOG: OFFLINE ]';
                 logIndicator.classList.remove('active');
@@ -596,62 +638,96 @@
         async function generatePoem(time) {
             const timeString = formatTime(time);
             const personality = getPersonality(time);
+            const fallback = () => t('fallbackPoem').replace('{timeString}', timeString);
 
             // Update UI status
             document.getElementById('status-indicator').textContent = `SYS_MODE: ${personality.label}`;
 
             // Check if API key is still placeholder or empty
-            if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE' || GEMINI_API_KEY === '') {
-                return t('fallbackPoem').replace('{timeString}', timeString) + '\n\n' + t('apiKeyMessage');
+            if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
+                return fallback() + '\n\n' + t('apiKeyMessage');
             }
 
             const prompt = t('poemPrompt')
                 .replace('{timeString}', timeString)
                 .replace('{personality}', personality.prompt);
 
-            // Enforce the 15 requests/minute limit of Gemma 4 26B
-            if (!canMakeRequest()) {
-                console.warn(`[SYSTEM] Rate limit reached (${GEMINI_RPM_LIMIT} RPM). Using fallback poem.`);
-                return t('fallbackPoem').replace('{timeString}', timeString);
-            }
-
-            try {
-                // Record this request for the sliding-window rate limiter
-                requestTimestamps.push(Date.now());
-
-                // Perform the API request to Google Gemini
-                const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: {
-                            temperature: 0.8,
-                            maxOutputTokens: 1000,
-                        }
-                    })
-                });
-
-                if (!response.ok) throw new Error(`API error: ${response.status}`);
-
-                const data = await response.json();
-                const candidate = data.candidates && data.candidates[0];
-                if (!candidate || !candidate.content || !candidate.content.parts) {
-                    throw new Error("Invalid API response structure or empty candidates list");
+            const requestBody = JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    temperature: 0.8,
+                    maxOutputTokens: 150,
                 }
-                const parts = candidate.content.parts;
-                const nonThoughtPart = parts.find(part => !part.thought);
-                const poem = (nonThoughtPart ? nonThoughtPart.text : parts[0].text).trim();
+            });
 
-                // Log the interaction
-                const timestamp = new Date().toLocaleString();
-                appendToLog(`[${timestamp}] [${personality.label}] \n${poem}\n\n`);
+            // Retry transient failures (429 rate limit, 5xx server errors).
+            const MAX_RETRIES = 2;
 
-                return poem;
-            } catch (error) {
-                console.error(t('errorMessage'), error);
-                return t('fallbackPoem').replace('{timeString}', timeString);
+            for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+                // Enforce the 15 requests/minute limit of Gemma 4 26B before
+                // every attempt (including retries).
+                if (!canMakeRequest()) {
+                    console.warn(`[SYSTEM] Rate limit reached (${GEMINI_RPM_LIMIT} RPM). Using fallback poem.`);
+                    return fallback();
+                }
+
+                try {
+                    // Record this request for the sliding-window rate limiter.
+                    recordRequest();
+
+                    // Perform the API request to Google Gemini. The key is sent
+                    // as a header rather than a URL parameter to keep it out of
+                    // browser history, referrer headers, and server logs.
+                    const response = await fetch(GEMINI_API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-goog-api-key': GEMINI_API_KEY
+                        },
+                        body: requestBody
+                    });
+
+                    if (!response.ok) {
+                        const isTransient = response.status === 429 || response.status >= 500;
+                        if (isTransient && attempt < MAX_RETRIES) {
+                            // Honor Retry-After when present; otherwise back off
+                            // exponentially. Cap the wait so the clock isn't
+                            // blocked for too long.
+                            const retryAfter = parseInt(response.headers.get('Retry-After'), 10);
+                            const backoffMs = Number.isFinite(retryAfter)
+                                ? Math.min(retryAfter * 1000, 30000)
+                                : 1000 * Math.pow(2, attempt);
+                            console.warn(`[SYSTEM] API ${response.status}; retrying in ${backoffMs}ms (attempt ${attempt + 1}/${MAX_RETRIES}).`);
+                            await new Promise(resolve => setTimeout(resolve, backoffMs));
+                            continue;
+                        }
+                        throw new Error(`API error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    const candidate = data.candidates && data.candidates[0];
+                    if (!candidate || !candidate.content || !candidate.content.parts) {
+                        throw new Error("Invalid API response structure or empty candidates list");
+                    }
+                    const textPart = candidate.content.parts.find(part => part.text);
+                    if (!textPart) {
+                        throw new Error("API response contained no text");
+                    }
+                    const poem = textPart.text.trim();
+
+                    // Log the interaction
+                    const timestamp = new Date().toLocaleString();
+                    appendToLog(`[${timestamp}] [${personality.label}] \n${poem}\n\n`);
+
+                    return poem;
+                } catch (error) {
+                    console.error(t('errorMessage'), error);
+                    return fallback();
+                }
             }
+
+            // All retries exhausted without a usable response.
+            return fallback();
         }
 
         /**
@@ -659,11 +735,18 @@
          */
         async function typePoem(poem) {
             isTyping = true;
-            poemDisplay.innerHTML = '';
+            poemDisplay.textContent = '';
+
+            // The cursor is a real DOM element so the poem text itself is
+            // never parsed as HTML (prevents broken rendering / injection
+            // if the model emits characters like '<', '>' or '&').
+            const cursor = document.createElement('span');
+            cursor.className = 'typing-effect';
 
             for (let i = 0; i < poem.length; i++) {
-                // Build text substring and add blinking cursor
-                poemDisplay.innerHTML = poem.substring(0, i + 1) + '<span class="typing-effect"></span>';
+                // Render the substring as plain text, then re-attach the cursor.
+                poemDisplay.textContent = poem.substring(0, i + 1);
+                poemDisplay.appendChild(cursor);
 
                 // Trigger sound for visible characters
                 if (poem[i] !== ' ' && poem[i] !== '\n') {
@@ -675,7 +758,7 @@
             }
 
             // Final state: Remove typing cursor and show full text
-            poemDisplay.innerHTML = poem;
+            poemDisplay.textContent = poem;
             isTyping = false;
 
             // Read aloud if TTS is enabled
@@ -699,16 +782,23 @@
 
             // Only update if the minute has actually changed
             if (currentMinuteNow !== currentMinute) {
-                currentMinute = currentMinuteNow;
-
-                // Update the digital clock
+                // Always keep the digital clock current.
                 timeIndicator.textContent = formatTime(now);
 
-                // Trigger AI Poem
-                if (!isTyping) {
+                // Trigger AI poem only when not already busy. If a previous
+                // poem is still generating/typing, leave currentMinute
+                // unchanged so a later tick retries instead of silently
+                // skipping this minute.
+                if (!isTyping && !isGenerating) {
+                    currentMinute = currentMinuteNow;
+                    isGenerating = true;
                     console.log(`[SYSTEM] Triggering AI poem for ${formatTime(now)}`);
-                    const poem = await generatePoem(now);
-                    await typePoem(poem);
+                    try {
+                        const poem = await generatePoem(now);
+                        await typePoem(poem);
+                    } finally {
+                        isGenerating = false;
+                    }
                 }
             }
 

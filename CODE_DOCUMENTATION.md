@@ -33,10 +33,11 @@ The project is built as a lightweight, single-page desktop widget composed of th
 
 | Function | Purpose | Key Logic |
 | :--- | :--- | :--- |
-| `updateClock()` | Main Loop | Calculates the current time, updates the digital clock, and triggers AI generation on the minute mark. |
-| `getPoem()` | AI Integration | Sends a POST request to Google Gemini API with a time-specific personality prompt. |
+| `updateClock()` | Main Loop | Calculates the current time, updates the digital clock, and triggers AI generation on the minute mark. An `isGenerating` flag guards against concurrent runs from the scheduled timer and visibility-change events; if a poem is still in progress, the minute is retried on a later tick rather than skipped. |
+| `getPoem()` | AI Integration | Sends a POST request to Google Gemini API with a time-specific personality prompt. The API key is passed via the `x-goog-api-key` header. Transient `429`/`5xx` failures are retried with `Retry-After`/exponential backoff. |
 | `canMakeRequest()` | Rate Limiting | Sliding-window guard that ensures API calls never exceed Gemma 4 26B's 15 requests/minute quota. |
-| `typePoem(text)` | UI Animation | Gradually renders text on the CRT screen while playing synchronized mechanical sounds. |
+| `recordRequest()` | Rate Limiting | Logs an API call timestamp and persists the sliding window to `localStorage` so the quota survives page reloads. |
+| `typePoem(text)` | UI Animation | Gradually renders text on the CRT screen while playing synchronized mechanical sounds. Uses `textContent` (not `innerHTML`) so model output is never parsed as HTML. |
 | `speak(text)` | TTS | Uses `speechSynthesis` to read poems aloud with slightly reduced speed for poetic effect. |
 | `getPersonality(date)` | Flavor Mapping | Maps the current hour to one of four personalities: Motivating, Dull, Easy, or Kinky. |
 | `sendLog(poem)` | Data Persistence | Sends the poem to `localhost:8080` via a POST request for recording. |
@@ -56,10 +57,11 @@ The project is built as a lightweight, single-page desktop widget composed of th
 ### Google Gemini API
 The app uses the `gemma-4-26b-a4b-it` model (or similar) to generate rhymes. 
 - **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
-- **Authentication**: Provided via an API Key in the `.env` file (parsed by the launcher and passed as a URL parameter).
+- **Authentication**: The API Key is stored in the `.env` file (parsed by the launcher and passed to the page as a URL parameter), then sent to Gemini via the `x-goog-api-key` request header — keeping it out of browser history, referrer headers, and server logs.
 - **Initialization**: The launcher scripts automatically create `.env` from `.env.example` if it is not present.
 - **Prompting**: Uses a "Personality" system where the system prompt changes based on the time of day.
-- **Rate Limiting**: Gemma 4 26B (free tier) permits **15 requests per minute**. A sliding-window limiter (`canMakeRequest()`) tracks request timestamps over a 60-second window and blocks calls that would exceed `GEMINI_RPM_LIMIT`. When the limit is hit, the app degrades gracefully to the offline fallback poem instead of producing `429` errors. The clock normally issues only ~1 request/minute, but this protects against spikes from rapid window visibility toggles.
+- **Rate Limiting**: Gemma 4 26B (free tier) permits **15 requests per minute**. A sliding-window limiter (`canMakeRequest()`) tracks request timestamps over a 60-second window and blocks calls that would exceed `GEMINI_RPM_LIMIT`. Timestamps are persisted to `localStorage` (`recordRequest()` / `loadRequestTimestamps()`) so the quota survives page reloads. When the limit is hit, the app degrades gracefully to the offline fallback poem instead of producing `429` errors.
+- **Retry & Backoff**: Transient failures (`429` and `5xx`) are retried up to twice, honoring the `Retry-After` header when present and otherwise using capped exponential backoff.
 
 ### Web Speech API
 Used for the Text-to-Speech (TTS) feature.
