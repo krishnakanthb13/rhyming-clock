@@ -35,6 +35,7 @@ The project is built as a lightweight, single-page desktop widget composed of th
 | :--- | :--- | :--- |
 | `updateClock()` | Main Loop | Calculates the current time, updates the digital clock, and triggers AI generation on the minute mark. |
 | `getPoem()` | AI Integration | Sends a POST request to Google Gemini API with a time-specific personality prompt. |
+| `canMakeRequest()` | Rate Limiting | Sliding-window guard that ensures API calls never exceed Gemma 4 26B's 15 requests/minute quota. |
 | `typePoem(text)` | UI Animation | Gradually renders text on the CRT screen while playing synchronized mechanical sounds. |
 | `speak(text)` | TTS | Uses `speechSynthesis` to read poems aloud with slightly reduced speed for poetic effect. |
 | `getPersonality(date)` | Flavor Mapping | Maps the current hour to one of four personalities: Motivating, Dull, Easy, or Kinky. |
@@ -53,11 +54,12 @@ The project is built as a lightweight, single-page desktop widget composed of th
 ## 📡 API & External Integrations
 
 ### Google Gemini API
-The app uses the `gemini-1.5-flash` model (or similar) to generate rhymes. 
+The app uses the `gemma-4-26b-a4b-it` model (or similar) to generate rhymes. 
 - **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
 - **Authentication**: Provided via an API Key in the `.env` file (parsed by the launcher and passed as a URL parameter).
 - **Initialization**: The launcher scripts automatically create `.env` from `.env.example` if it is not present.
 - **Prompting**: Uses a "Personality" system where the system prompt changes based on the time of day.
+- **Rate Limiting**: Gemma 4 26B (free tier) permits **15 requests per minute**. A sliding-window limiter (`canMakeRequest()`) tracks request timestamps over a 60-second window and blocks calls that would exceed `GEMINI_RPM_LIMIT`. When the limit is hit, the app degrades gracefully to the offline fallback poem instead of producing `429` errors. The clock normally issues only ~1 request/minute, but this protects against spikes from rapid window visibility toggles.
 
 ### Web Speech API
 Used for the Text-to-Speech (TTS) feature.
@@ -69,7 +71,7 @@ Used for the Text-to-Speech (TTS) feature.
 ## 🔄 Data Flow
 
 1.  **Trigger**: `updateClock` detects a minute change.
-2.  **Generation**: `getPoem` requests a rhyme from Gemini API.
+2.  **Generation**: `getPoem` checks `canMakeRequest()` (15 RPM limit), then requests a rhyme from Gemini API — or falls back to an offline poem if rate-limited.
 3.  **Display**: `typePoem` animates the response on the CRT screen.
 4.  **Audio**: `speak` reads the poem; Web Audio API plays typing "blips".
 5.  **Recording**: `sendLog` transmits the poem to the PowerShell logger.

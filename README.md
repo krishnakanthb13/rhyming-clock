@@ -16,7 +16,8 @@
 A minimalist widget that uses AI to generate a unique rhyming poem for every minute of the day, displayed on a glowing CRT monitor.
 
 ## ✨ Features
-- **AI-Powered Poetry**: Every minute, a new 2-line rhyming poem is generated based on the current time using Google Gemini AI.
+- **AI-Powered Poetry**: Every minute, a new 2-line rhyming poem is generated based on the current time using Google Gemini AI (`gemma-4-26b-a4b-it`).
+- **Rate-Limit Aware**: A built-in sliding-window limiter respects Gemma 4 26B's free-tier quota of 15 requests/minute, falling back to an offline poem if exceeded.
 - **Retro Aesthetic**: Designed with a CRT-style display, scanlines, and a pulsing power LED.
 - **Minimalist Window**: Launches in a small, non-intrusive 300x200 window in the top-right corner of your screen.
 - **Typing Sound Effects**: Authentic mechanical typing sounds as the poem appears (volume adjustable).
