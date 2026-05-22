@@ -2,14 +2,15 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
+![Release Poster](assets/release_poster.png)
 
-![Screenshot](assets/screenshot1.png)
-
-![Screenshot](assets/screenshot2.png)
-
-![Screenshot](assets/screenshot3.png)
-
-![Screenshot](assets/screenshot4.png)
+<p align="center">
+  <img src="assets/screenshot1.png" width="48%" />
+  <img src="assets/screenshot2.png" width="48%" />
+  <br/>
+  <img src="assets/screenshot3.png" width="48%" />
+  <img src="assets/screenshot4.png" width="48%" />
+</p>
 
 > **A retro-styled desktop companion that turns the passing of time into poetry.**
 
