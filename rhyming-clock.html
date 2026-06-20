@@ -401,7 +401,7 @@
          */
         const TRANSLATIONS = {
             "en-US": {
-                "poemPrompt": "Write a very short (4 lines) minimalist poem about the time {timeString}. The poem must rhyme and be simple. Focus on the specific time. The mood of the poem should be {personality} and Random. Respond with ONLY the 4-line poem. Be Creative everytime!",
+                "poemPrompt": "Write a very short (4 lines) minimalist poem about the time {timeString}. The poem must rhyme and be simple. Focus on the specific time. The mood of the poem should be {personality} and Random. Keep reasoning brief. Respond with ONLY the 4-line poem. Be Creative everytime!",
                 "fallbackPoem": "The clock strikes {timeString},\nA moment is seen.",
                 "errorMessage": "Error generating poem:",
                 "apiKeyMessage": "⚠️ Add Gemini API key in .env file."
@@ -629,7 +629,7 @@
             if (hour >= 5 && hour < 12) return { prompt: "motivating and energetic", label: "MOTIVATING" };
             if (hour >= 12 && hour < 17) return { prompt: "dull, bored, and monotonous", label: "DULL" };
             if (hour >= 17 && hour < 21) return { prompt: "easy, relaxed, and mellow", label: "EASY" };
-            return { prompt: "kinky, mysterious, and late-night provocative", label: "KINKY" };
+            return { prompt: "sensual, mysterious, and late-night evocative", label: "KINKY" };
         }
 
         /**
@@ -656,7 +656,7 @@
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: {
                     temperature: 0.8,
-                    maxOutputTokens: 150,
+                    maxOutputTokens: 8192,
                 }
             });
 
@@ -709,7 +709,7 @@
                     if (!candidate || !candidate.content || !candidate.content.parts) {
                         throw new Error("Invalid API response structure or empty candidates list");
                     }
-                    const textPart = candidate.content.parts.find(part => part.text);
+                    const textPart = candidate.content.parts.find(part => part.text && !part.thought);
                     if (!textPart) {
                         throw new Error("API response contained no text");
                     }
